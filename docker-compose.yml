@@ -1,0 +1,138 @@
+version: '2'
+
+services:
+  zookeep:
+    image: confluentinc/cp-zookeeper:5.4.0
+    hostname: zookeep
+    container_name: zookeep
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    # volumes:
+    #   - zk-data:/var/lib/zookeeper/data
+    #   - zk-txn-logs:/var/lib/zookeeper/log
+    # networks:
+    #   - backend
+
+  broke:
+    image: confluentinc/cp-enterprise-kafka:5.4.0
+    hostname: broke
+    container_name: broke
+    depends_on:
+      - zookeep
+    ports:
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeep:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broke:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    # volumes:
+    #   - kafka-data:/var/lib/kafka/data
+    # networks: 
+    #   - backend
+
+  ksqldb-serve:
+    image: confluentinc/ksqldb-server:0.7.1
+    hostname: ksqldb-serve
+    container_name: ksqldb-serve
+    depends_on:
+      - broke
+    ports:
+      - "8088:8088"
+    environment:
+      KSQL_LISTENERS: http://0.0.0.0:8088
+      KSQL_BOOTSTRAP_SERVERS: broke:9092
+      KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
+      KSQL_KSQL_LOGGING_PROCESSING_TOPIC_AUTO_CREATE: "true"
+
+  ksqldb-cl:
+    image: confluentinc/ksqldb-cli:0.7.1
+    container_name: ksqldb-cl
+    depends_on:
+      - broke
+      - ksqldb-serve
+    entrypoint: /bin/sh
+    tty: true
+
+  # pg_db:
+  #   image: postgres:11
+  #   volumes:
+  #     - db-data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   environment:
+  #     POSTGRES_USER: "${POSTGRES_USER}"
+  #     POSTGRES_PW: "${POSTGRES_PW}"
+  #     POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+  #     POSTGRES_DB: "${POSTGRES_DB}"
+  #   networks:
+  #     - backend 
+
+  #   # Elasticsearch cluster. es01 is reached at localhost:9200. It shares the call with the other nodes.      
+  #   es01:
+  #     image: docker.elastic.co/elasticsearch/elasticsearch:7.5.2
+  #     container_name: es01
+  #     environment:
+  #       - node.name=es01
+  #       - cluster.name=es-docker-cluster
+  #       - discovery.seed_hosts=es02,es03
+  #       - cluster.initial_master_nodes=es01,es02,es03
+  #     volumes:
+  #       - data01:/usr/share/elasticsearch/data
+  #     ports:
+  #       - 127.0.0.1:9200:9200  #enforce reverse proxy - only accessible from host machine
+  #     networks:
+  #       - elastic
+  
+  #   es02:
+  #     image: docker.elastic.co/elasticsearch/elasticsearch:7.5.2
+  #     container_name: es02
+  #     environment:
+  #       - node.name=es02
+  #       - cluster.name=es-docker-cluster
+  #       - discovery.seed_hosts=es01,es03
+  #       - cluster.initial_master_nodes=es01,es02,es03
+  #     volumes:
+  #       - data02:/usr/share/elasticsearch/data
+  #     networks:
+  #       - elastic
+  
+  #   es03:
+  #     image: docker.elastic.co/elasticsearch/elasticsearch:7.5.2
+  #     container_name: es03
+  #     environment:
+  #       - node.name=es03
+  #       - cluster.name=es-docker-cluster
+  #       - discovery.seed_hosts=es01,es02
+  #       - cluster.initial_master_nodes=es01,es02,es03
+  #     volumes:
+  #       - data03:/usr/share/elasticsearch/data
+  #     networks:
+  #       - elastic
+      
+  # volumes:
+  #   zk-data:
+  #     driver: local
+  #   zk-txn-logs:
+  #     driver: local
+  #   kafka-data:
+  #     driver: local
+  #   data01:
+  #     driver: local
+  #   data02:
+  #     driver: local
+  #   data03:
+  #     driver: local
+  #   shared_volume:
+  
+  # networks:
+  #   backend:
+    # elastic:
+    #   driver: bridge

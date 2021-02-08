@@ -1,0 +1,12 @@
+# Environment files
+*.env
+
+# Log file
+*.log
+
+# Extra
+DS_Store
+*.git
+.idea
+notes.md
+__pycache__
