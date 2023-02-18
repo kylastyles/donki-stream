@@ -3,6 +3,7 @@
 
 # Log file
 *.log
+data/*
 
 # Extra
 DS_Store
